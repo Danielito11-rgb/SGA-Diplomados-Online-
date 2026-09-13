@@ -6,9 +6,9 @@ class Persona(ABC):
     """Clase base abstracta para representar a una persona."""
 
     def __init__(self, cedula: str, nombre: str, correo: str) -> None:
-        self.cedula = cedula
-        self.nombre = nombre
-        self.correo = correo
+        self._cedula = cedula
+        self._nombre = nombre
+        self._correo = correo
     # Encapsulamiento mediante getters
     @property
     def cedula(self) -> str:
@@ -24,7 +24,7 @@ class Persona(ABC):
     def __str__(self) -> str:
         return f"{self.nombre} (CI: {self._cedula})"
 
-    class Alumno(Persona):
+class Alumno(Persona):
         """Clase que representa a un estudiante encuestado/inscrito."""
 
         def __init__(self, cedula: str, nombre: str, correo: str, programa: 'ProgramaAcademico' = None) -> None:
@@ -92,6 +92,6 @@ class Bootcamp(ProgramaAcademico):
             return False
         # Regla esricta: Aprueba si el proedio es >= 14 y ninguna Nota es menor a 14
         promedio = sum(notas) / len(notas)
-        niguna_reprobada = all(nota >= 14.0 for nota in notas)
-        return promedio >= 14.0 and all(nota >= 14.0 for nota in notas)
+        ninguna_reprobada = all(nota >= 14.0 for nota in notas)
+        return promedio >= 14.0 and ninguna_reprobada
     
