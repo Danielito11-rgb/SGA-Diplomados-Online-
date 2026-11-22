@@ -1,0 +1,5 @@
+
+# C++ build artifacts
+cpp/*.out
+cpp/*.o
+cpp/*.obj
