@@ -42,7 +42,7 @@ class ColaCertificados:
         self._frente: Optional[Nodo] = None
         self._final: Optional[Nodo] = None
         self._tamano: int = 0
-        def encolar(self, solicitud: Any) -> None:
+    def encolar(self, solicitud: Any) -> None:
             nuevo_nodo = Nodo(solicitud)
             if self.esta_vacia():
                 self._frente = nuevo_nodo
