@@ -1,1 +1,4 @@
 V-999;TEstes;TEst@testy.com;Diplomado;13.0,20.0
+V-777;Prueba gonzalez;prueba@gonzalez.com;Diplomado;18.0,14.0
+V-123;Test GOnzalez;Test@Gonza.com;Curso Profesional;8.0,9.0
+V-1245;APAGON;APagon@dna;Diplomado;

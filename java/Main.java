@@ -6,6 +6,7 @@ import entidades.ProgramaAcademico;
 import gestores.GestorSGA;
 
 import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
 import java.util.List;
 import java.util.Locale;
 import java.util.Scanner;
@@ -18,7 +19,7 @@ public class Main {
             try {
                 return Integer.parseInt(entrada);
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor ingrese un número entero.");
+                System.out.println("Error: Ingrese un valor numérico válido.");
             }
         }
     }
@@ -30,7 +31,7 @@ public class Main {
             try {
                 return Double.parseDouble(entrada);
             } catch (NumberFormatException e) {
-                System.out.println("Entrada inválida. Por favor ingrese un número válido (0 - 20).");
+                System.out.println("Error: Ingrese un valor numérico válido.");
             }
         }
     }
@@ -126,10 +127,9 @@ public class Main {
 
         double nota = leerNota(scanner, "Ingrese la nota (0.0 a 20.0): ");
         try {
-            alumno.agregarNota(nota);
-            gestor.getHistorial().apilar("Nota " + nota + " agregada a CI: " + alumno.getCedula());
-            gestor.guardarDatos();
-            System.out.printf(Locale.ROOT, "Nota registrada. Nuevo promedio: %.2f%n", alumno.calcularPromedio());
+            if (gestor.registrarNotaConDeshacer(cedula, nota)) {
+                System.out.printf(Locale.ROOT, "Nota registrada. Nuevo promedio: %.2f%n", alumno.calcularPromedio());
+            }
         } catch (IllegalArgumentException e) {
             System.out.println("Error al agregar nota: " + e.getMessage());
         }
@@ -180,6 +180,41 @@ public class Main {
         }
     }
 
+    private static void deshacerMenu(GestorSGA gestor) {
+        System.out.println("\n--- Deshacer Última Nota (LIFO) ---");
+        String resultado = gestor.deshacerUltimaNota();
+        if (resultado == null) {
+            System.out.println("No hay notas recientes para deshacer.");
+        } else {
+            System.out.println(resultado);
+        }
+    }
+
+    private static void generarColaCertificadosMenu(GestorSGA gestor) {
+        System.out.println("\n--- Generar Cola de Certificados ---");
+        Path rutaExportada = gestor.exportarColaCertificados();
+        if (rutaExportada != null) {
+            System.out.println("Archivo generado en: " + rutaExportada.toAbsolutePath());
+        } else {
+            System.out.println("No se pudo generar certificados_pendientes.txt.");
+        }
+    }
+
+    private static void reporteGeneralMenu(GestorSGA gestor) {
+        System.out.println("\n--- Reporte General de Alumnos ---");
+        List<Alumno> lista = gestor.getAlumnos();
+        if (lista.isEmpty()) {
+            System.out.println("No hay alumnos registrados.");
+            return;
+        }
+        for (Alumno a : lista) {
+            String prog = (a.getPrograma() != null) ? a.getPrograma().getNombrePrograma() : "Sin Programa";
+            String estado = a.estaAprobado() ? "APROBADO" : "NO APROBADO";
+            System.out.printf(Locale.ROOT, "- %s (%s) | %s | Prom: %.2f | %s%n",
+                a.getNombre(), a.getCedula(), prog, a.calcularPromedio(), estado);
+        }
+    }
+
     public static void main(String[] args) {
         GestorSGA gestor = new GestorSGA("datos");
         gestor.cargarDatos();
@@ -196,6 +231,9 @@ public class Main {
                 System.out.println("4. Encolar solicitud de certificado (FIFO)");
                 System.out.println("5. Atender siguiente certificado (FIFO)");
                 System.out.println("6. Ver historial de acciones (LIFO)");
+                System.out.println("7. Deshacer última nota (LIFO)");
+                System.out.println("8. Generar cola de certificados (TXT)");
+                System.out.println("9. Reporte general");
                 System.out.println("0. Guardar y salir");
                 System.out.println("==========================================");
 
@@ -218,6 +256,15 @@ public class Main {
                         break;
                     case 6:
                         verHistorialMenu(gestor);
+                        break;
+                    case 7:
+                        deshacerMenu(gestor);
+                        break;
+                    case 8:
+                        generarColaCertificadosMenu(gestor);
+                        break;
+                    case 9:
+                        reporteGeneralMenu(gestor);
                         break;
                     case 0:
                         gestor.guardarDatos();

@@ -16,17 +16,30 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Deque;
 import java.util.List;
 import java.util.Locale;
 
 public class GestorSGA {
+    private static class RegistroNotaDeshacer {
+        final String cedulaAlumno;
+        final double nota;
+
+        RegistroNotaDeshacer(String cedulaAlumno, double nota) {
+            this.cedulaAlumno = cedulaAlumno;
+            this.nota = nota;
+        }
+    }
+
     private final Path rutaDatos;
     private final List<Alumno> alumnos;
     private final List<Profesor> profesores;
     private final PilaHistorial historial;
     private final ColaCertificados colaCertificados;
+    private final Deque<RegistroNotaDeshacer> pilaDeshacerNotas;
 
     public GestorSGA(String rutaDatos) {
         this.rutaDatos = Paths.get(rutaDatos);
@@ -34,6 +47,7 @@ public class GestorSGA {
         this.profesores = new ArrayList<>();
         this.historial = new PilaHistorial();
         this.colaCertificados = new ColaCertificados();
+        this.pilaDeshacerNotas = new ArrayDeque<>();
 
         try {
             if (!Files.exists(this.rutaDatos)) {
@@ -191,6 +205,74 @@ public class GestorSGA {
         } catch (IOException e) {
             System.err.println("Error al guardar profesores.txt: " + e.getMessage());
         }
+    }
+
+    public boolean registrarNotaConDeshacer(String cedula, double nota) {
+        Alumno alumno = buscarAlumnoPorCedula(cedula);
+        if (alumno == null) {
+            return false;
+        }
+        alumno.agregarNota(nota);
+        pilaDeshacerNotas.push(new RegistroNotaDeshacer(alumno.getCedula(), nota));
+        historial.apilar("Nota " + nota + " agregada a CI: " + alumno.getCedula());
+        guardarDatos();
+        return true;
+    }
+
+    public String deshacerUltimaNota() {
+        if (pilaDeshacerNotas.isEmpty()) {
+            return null;
+        }
+        RegistroNotaDeshacer ultimo = pilaDeshacerNotas.pop();
+        Alumno alumno = buscarAlumnoPorCedula(ultimo.cedulaAlumno);
+        if (alumno != null) {
+            List<Double> notasActuales = alumno.getNotas();
+            int idx = -1;
+            for (int i = notasActuales.size() - 1; i >= 0; i--) {
+                if (Double.compare(notasActuales.get(i), ultimo.nota) == 0) {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx >= 0) {
+                // Reconstruir lista de notas sin la nota deshecha
+                List<Double> nuevasNotas = new ArrayList<>(notasActuales);
+                nuevasNotas.remove(idx);
+                // Reemplazar alumno por instancia con notas actualizadas
+                Alumno actualizado = new Alumno(
+                    alumno.getCedula(),
+                    alumno.getNombre(),
+                    alumno.getCorreo(),
+                    alumno.getPrograma()
+                );
+                for (Double n : nuevasNotas) {
+                    actualizado.agregarNota(n);
+                }
+                int posAlumno = alumnos.indexOf(alumno);
+                if (posAlumno >= 0) {
+                    alumnos.set(posAlumno, actualizado);
+                }
+            }
+        }
+        historial.apilar("Deshacer: Se revirtió la nota " + ultimo.nota + " de CI: " + ultimo.cedulaAlumno);
+        guardarDatos();
+        return "Se deshizo la nota " + ultimo.nota + " del alumno CI: " + ultimo.cedulaAlumno + ".";
+    }
+
+    public Path exportarColaCertificados() {
+        Path archivo = Paths.get("certificados_pendientes.txt");
+        List<String> elementos = colaCertificados.listarElementos();
+        try (BufferedWriter bw = Files.newBufferedWriter(archivo, StandardCharsets.UTF_8)) {
+            for (String item : elementos) {
+                bw.write(item);
+                bw.newLine();
+            }
+        } catch (IOException e) {
+            System.err.println("Error al exportar certificados_pendientes.txt: " + e.getMessage());
+            return null;
+        }
+        historial.apilar("Cola de certificados exportada a certificados_pendientes.txt (" + elementos.size() + " registros).");
+        return archivo;
     }
 
     private ProgramaAcademico instanciarPrograma(String nombre) {
