@@ -2,6 +2,7 @@
 #include "estructuras.hpp"
 #include "gestores.hpp"
 
+#include <filesystem>
 #include <iomanip>
 #include <iostream>
 #include <limits>
@@ -33,7 +34,7 @@ int leerEntero(const std::string& mensaje) {
             limpiarEntrada();
             return valor;
         }
-        std::cout << "Entrada invalida. Ingresa un numero entero.\n";
+        std::cout << "Error: Ingrese un valor numerico valido.\n";
         limpiarEntrada();
     }
 }
@@ -46,7 +47,7 @@ double leerDouble(const std::string& mensaje) {
             limpiarEntrada();
             return valor;
         }
-        std::cout << "Entrada invalida. Ingresa un numero valido.\n";
+        std::cout << "Error: Ingrese un valor numerico valido.\n";
         limpiarEntrada();
     }
 }
@@ -61,7 +62,9 @@ void mostrarMenu() {
               << "4. Encolar solicitud de certificado\n"
               << "5. Atender siguiente certificado (FIFO)\n"
               << "6. Ver historial de acciones (LIFO)\n"
-              << "7. Guardar datos manualmente\n"
+              << "7. Deshacer ultima nota (LIFO)\n"
+              << "8. Generar cola de certificados (TXT)\n"
+              << "9. Guardar datos manualmente\n"
               << "0. Salir\n"
               << "========================================\n";
 }
@@ -139,13 +142,10 @@ int main() {
                 } else {
                     double nota = leerDouble("Nota (0 a 20): ");
                     try {
-                        alumno->agregarNota(nota);
-                        gestor.historial().apilar(
-                            "Nota agregada (" + std::to_string(nota) + ") a CI: " + alumno->cedula()
-                        );
-                        gestor.guardarDatos();
-                        std::cout << "Nota registrada. Nuevo promedio: "
-                                  << std::fixed << std::setprecision(2) << alumno->calcularPromedio() << "\n";
+                        if (gestor.registrarNotaConDeshacer(cedula, nota)) {
+                            std::cout << "Nota registrada. Nuevo promedio: "
+                                      << std::fixed << std::setprecision(2) << alumno->calcularPromedio() << "\n";
+                        }
                     } catch (const std::out_of_range& ex) {
                         std::cout << "Error: " << ex.what() << "\n";
                     }
@@ -186,6 +186,24 @@ int main() {
                 break;
             }
             case 7: {
+                std::string msg = gestor.deshacerUltimaNota();
+                if (msg.empty()) {
+                    std::cout << "No hay notas recientes para deshacer.\n";
+                } else {
+                    std::cout << msg << "\n";
+                }
+                break;
+            }
+            case 8: {
+                std::filesystem::path ruta = gestor.exportarColaCertificados();
+                if (!ruta.empty()) {
+                    std::cout << "Archivo generado en: " << std::filesystem::absolute(ruta) << "\n";
+                } else {
+                    std::cout << "No se pudo generar certificados_pendientes.txt.\n";
+                }
+                break;
+            }
+            case 9: {
                 gestor.guardarDatos();
                 std::cout << "Datos guardados en disco.\n";
                 break;

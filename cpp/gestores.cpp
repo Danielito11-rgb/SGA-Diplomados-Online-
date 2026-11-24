@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <cctype>
+#include <cmath>
 #include <filesystem>
 #include <fstream>
 #include <sstream>
@@ -92,9 +93,7 @@ void GestorSGA::cargarAlumnos() {
                         double nota = std::stod(limpia);
                         alumno.agregarNota(nota);
                     } catch (const std::invalid_argument&) {
-                        // Ignorar valor no numérico malformado
                     } catch (const std::out_of_range&) {
-                        // Ignorar nota fuera del rango 0..20 o desbordamiento
                     }
                 }
             }
@@ -211,6 +210,68 @@ bool GestorSGA::registrarAlumno(const Alumno& alumno) {
     historial_.apilar("Alumno registrado: " + alumno.nombre() + " (CI: " + alumno.cedula() + ")");
     guardarDatos();
     return true;
+}
+
+bool GestorSGA::registrarNotaConDeshacer(const std::string& cedula, double nota) {
+    Alumno* alumno = buscarAlumnoPorCedula(cedula);
+    if (alumno == nullptr) {
+        return false;
+    }
+    alumno->agregarNota(nota);
+    pilaDeshacerNotas_.push_back(RegistroNotaDeshacer{alumno->cedula(), nota});
+    historial_.apilar("Nota agregada (" + std::to_string(nota) + ") a CI: " + alumno->cedula());
+    guardarDatos();
+    return true;
+}
+
+std::string GestorSGA::deshacerUltimaNota() {
+    if (pilaDeshacerNotas_.empty()) {
+        return "";
+    }
+    RegistroNotaDeshacer ultimo = pilaDeshacerNotas_.back();
+    pilaDeshacerNotas_.pop_back();
+
+    for (Alumno& a : alumnos_) {
+        if (a.cedula() == ultimo.cedulaAlumno) {
+            std::vector<double> actuales = a.notas();
+            int idx = -1;
+            for (int i = static_cast<int>(actuales.size()) - 1; i >= 0; --i) {
+                if (std::fabs(actuales[static_cast<std::size_t>(i)] - ultimo.nota) < 1e-9) {
+                    idx = i;
+                    break;
+                }
+            }
+            if (idx >= 0) {
+                actuales.erase(actuales.begin() + idx);
+                Alumno reconstruido(a.cedula(), a.nombre(), a.correo(), a.programa());
+                for (double n : actuales) {
+                    reconstruido.agregarNota(n);
+                }
+                a = reconstruido;
+            }
+            break;
+        }
+    }
+
+    historial_.apilar("Deshacer: Se revirtio nota de CI: " + ultimo.cedulaAlumno);
+    guardarDatos();
+    return "Se deshizo la ultima nota del alumno CI: " + ultimo.cedulaAlumno + ".";
+}
+
+fs::path GestorSGA::exportarColaCertificados() {
+    fs::path rutaArchivo = fs::path("certificados_pendientes.txt");
+    std::ofstream archivo(rutaArchivo);
+    if (!archivo.is_open()) {
+        return {};
+    }
+
+    std::vector<std::string> elementos = colaCertificados_.listarElementos();
+    for (const std::string& item : elementos) {
+        archivo << item << "\n";
+    }
+
+    historial_.apilar("Cola de certificados exportada a certificados_pendientes.txt.");
+    return rutaArchivo;
 }
 
 Alumno* GestorSGA::buscarAlumnoPorCedula(const std::string& cedula) {
