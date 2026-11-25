@@ -195,9 +195,19 @@ int main() {
                 break;
             }
             case 8: {
+                std::vector<std::string> pendientes = gestor.colaCertificados().listarElementos();
                 std::filesystem::path ruta = gestor.exportarColaCertificados();
                 if (!ruta.empty()) {
-                    std::cout << "Archivo generado en: " << std::filesystem::absolute(ruta) << "\n";
+                    if (pendientes.empty()) {
+                        std::cout << "La cola estaba vacia. Archivo generado en: "
+                                  << std::filesystem::absolute(ruta) << "\n";
+                    } else {
+                        std::cout << "Certificados exportados en orden FIFO:\n";
+                        for (std::size_t i = 0; i < pendientes.size(); ++i) {
+                            std::cout << "  " << (i + 1) << ". " << pendientes[i] << "\n";
+                        }
+                        std::cout << "Archivo generado en: " << std::filesystem::absolute(ruta) << "\n";
+                    }
                 } else {
                     std::cout << "No se pudo generar certificados_pendientes.txt.\n";
                 }

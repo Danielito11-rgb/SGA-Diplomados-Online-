@@ -3,6 +3,10 @@
 #include <numeric>
 #include <stdexcept>
 
+namespace {
+constexpr std::size_t MAX_NOTAS_ALUMNO = 3;
+} // namespace
+
 // --- Persona ---
 Persona::Persona(const std::string& cedula, const std::string& nombre, const std::string& correo)
     : cedula_(cedula), nombre_(nombre), correo_(correo) {}
@@ -45,6 +49,9 @@ const std::vector<double>& Alumno::notas() const {
 }
 
 void Alumno::agregarNota(double nota) {
+    if (notas_.size() >= MAX_NOTAS_ALUMNO) {
+        throw std::out_of_range("El alumno ya alcanzo el limite maximo de 3 notas.");
+    }
     if (nota < 0.0 || nota > 20.0) {
         throw std::out_of_range("La nota debe estar entre 0 y 20.");
     }

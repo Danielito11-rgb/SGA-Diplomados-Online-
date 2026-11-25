@@ -235,10 +235,8 @@ public class GestorSGA {
                 }
             }
             if (idx >= 0) {
-                // Reconstruir lista de notas sin la nota deshecha
                 List<Double> nuevasNotas = new ArrayList<>(notasActuales);
                 nuevasNotas.remove(idx);
-                // Reemplazar alumno por instancia con notas actualizadas
                 Alumno actualizado = new Alumno(
                     alumno.getCedula(),
                     alumno.getNombre(),
@@ -260,18 +258,23 @@ public class GestorSGA {
     }
 
     public Path exportarColaCertificados() {
-        Path archivo = Paths.get("certificados_pendientes.txt");
+        Path archivo = rutaDatos.resolve("certificados_pendientes.txt");
         List<String> elementos = colaCertificados.listarElementos();
         try (BufferedWriter bw = Files.newBufferedWriter(archivo, StandardCharsets.UTF_8)) {
-            for (String item : elementos) {
-                bw.write(item);
+            if (elementos.isEmpty()) {
+                bw.write("No hay certificados pendientes en la cola.");
                 bw.newLine();
+            } else {
+                for (int i = 0; i < elementos.size(); i++) {
+                    bw.write((i + 1) + ". " + elementos.get(i));
+                    bw.newLine();
+                }
             }
         } catch (IOException e) {
             System.err.println("Error al exportar certificados_pendientes.txt: " + e.getMessage());
             return null;
         }
-        historial.apilar("Cola de certificados exportada a certificados_pendientes.txt (" + elementos.size() + " registros).");
+        historial.apilar("Cola de certificados exportada a " + archivo + " (" + elementos.size() + " registros).");
         return archivo;
     }
 

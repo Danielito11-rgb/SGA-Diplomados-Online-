@@ -9,13 +9,15 @@ def mostrar_menu() -> None:
     print("=" * 50)
     print("1. Registrar nuevo Alumno")
     print("2. Registrar nuevo Profesor")
-    print("3. Asignar nota a Alumno")
+    print("3. Asignar nota a Alumno (máx. 3)")
     print("4. Consultar estado / aprobación de Alumno")
-    print("5. Solicitar Certificado (Encolar)")
-    print("6. Procesar siguiente Certificado (Desencolar)")
+    print("5. Solicitar Certificado (Encolar FIFO)")
+    print("6. Procesar siguiente Certificado (Desencolar FIFO)")
     print("7. Ver Historial de Acciones (Pila LIFO)")
     print("8. Listar Alumnos y Profesores registrados")
-    print("9. Guardar y Salir")
+    print("9. Deshacer última nota (Pila LIFO)")
+    print("10. Generar archivo de todos los certificados (FIFO)")
+    print("11. Guardar y Salir")
     print("=" * 50)
 
 
@@ -25,7 +27,7 @@ def main() -> None:
 
     while True:
         mostrar_menu()
-        opcion = input("Seleccione una opción (1-9): ").strip()
+        opcion = input("Seleccione una opción (1-11): ").strip()
 
         if opcion == "1":
             print("\n--- REGISTRAR ALUMNO ---")
@@ -71,18 +73,12 @@ def main() -> None:
         elif opcion == "3":
             print("\n--- ASIGNAR NOTA A ALUMNO ---")
             cedula = input("Ingrese la cédula del alumno: ").strip()
-            alumno = gestor.buscar_alumno_por_cedula(cedula)
-            if alumno:
-                try:
-                    nota = float(input("Ingrese la calificación (0-20): "))
-                    alumno.agregar_nota(nota)
-                    gestor.historial.apilar(f"Nota {nota} asignada a CI: {cedula}")
-                    gestor.guardar_datos()
-                    print(f"Nota {nota} asignada correctamente a {alumno.nombre}.")
-                except ValueError as e:
-                    print(f"Error: {e}")
-            else:
-                print(" Alumno no encontrado.")
+            try:
+                nota = float(input("Ingrese la calificación (0-20): "))
+                mensaje = gestor.asignar_nota_alumno(cedula, nota)
+                print(mensaje)
+            except (ValueError, LookupError) as e:
+                print(f"Error: {e}")
 
         elif opcion == "4":
             print("\n--- CONSULTAR ESTADO DE ALUMNO ---")
@@ -93,7 +89,7 @@ def main() -> None:
                 aprobado = alumno.esta_aprobado()
                 estado_str = "APROBADO 🎉" if aprobado else "REPROBADO / EN CURSO ⚠️"
                 prog_str = alumno.programa.nombre_programa if alumno.programa else "Sin programa"
-                
+
                 print(f"\nAlumno: {alumno.nombre} (CI: {alumno.cedula})")
                 print(f"Programa: {prog_str}")
                 print(f"Notas: {alumno.notas}")
@@ -153,6 +149,19 @@ def main() -> None:
                 print(" No hay profesores registrados.")
 
         elif opcion == "9":
+            print("\n--- DESHACER ÚLTIMA NOTA (PILA LIFO) ---")
+            resultado = gestor.deshacer_ultima_nota()
+            if resultado:
+                print(f"✔ {resultado}")
+            else:
+                print("ℹ No hay notas recientes para deshacer.")
+
+        elif opcion == "10":
+            print("\n--- GENERAR ARCHIVO DE TODOS LOS CERTIFICADOS (FIFO) ---")
+            ruta = gestor.exportar_certificados_txt()
+            print(f"✔ Archivo generado en: {ruta}")
+
+        elif opcion == "11":
             gestor.guardar_datos()
             print("\n Datos guardados correctamente. ¡Hasta luego!")
             sys.exit(0)

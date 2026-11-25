@@ -1,1 +1,2 @@
 V-999;Testuno;pruebauno@test.com;Diplomado;16
+V-777;Test GOnzalez;Test@Gonzalez.com;Diplomado;20,12,20

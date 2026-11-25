@@ -1,7 +1,15 @@
 import os
 from typing import List, Optional
-from entidades import Alumno, Profesor, Curso, Diplomado, Bootcamp, ProgramaAcademico
-from estructuras import PilaHistorial, ColaCertificados
+from entidades import (
+    Alumno,
+    Profesor,
+    Curso,
+    Diplomado,
+    Bootcamp,
+    ProgramaAcademico,
+    MAX_NOTAS_POR_ALUMNO,
+)
+from estructuras import PilaHistorial, ColaCertificados, PilaDeshacerNotas
 
 
 class GestorSGA:
@@ -13,6 +21,7 @@ class GestorSGA:
         self.profesores: List[Profesor] = []
         self.historial: PilaHistorial = PilaHistorial()
         self.cola_certificados: ColaCertificados = ColaCertificados()
+        self.pila_deshacer_notas: PilaDeshacerNotas = PilaDeshacerNotas()
 
         # Asegurar que la carpeta de datos exista
         if not os.path.exists(self.ruta_datos):
@@ -26,10 +35,10 @@ class GestorSGA:
 
     def _cargar_alumnos(self) -> None:
         ruta_archivo = os.path.join(self.ruta_datos, "alumnos.txt")
-        
+
         # Si el archivo no existe, lo crea vacío y retorna
         if not os.path.isfile(ruta_archivo):
-            with open(ruta_archivo, "w", encoding="utf-8") as f:
+            with open(ruta_archivo, "w", encoding="utf-8"):
                 pass
             return
 
@@ -47,7 +56,7 @@ class GestorSGA:
 
                     if len(partes) > 4 and partes[4]:
                         notas_str = partes[4].split(",")
-                        for n in notas_str:
+                        for n in notas_str[:MAX_NOTAS_POR_ALUMNO]:
                             try:
                                 alumno.agregar_nota(float(n))
                             except ValueError:
@@ -56,10 +65,10 @@ class GestorSGA:
 
     def _cargar_profesores(self) -> None:
         ruta_archivo = os.path.join(self.ruta_datos, "profesores.txt")
-        
+
         # Si el archivo no existe, lo crea vacío y retorna
         if not os.path.isfile(ruta_archivo):
-            with open(ruta_archivo, "w", encoding="utf-8") as f:
+            with open(ruta_archivo, "w", encoding="utf-8"):
                 pass
             return
 
@@ -86,7 +95,7 @@ class GestorSGA:
         with open(ruta_archivo, "w", encoding="utf-8") as f:
             for a in self.alumnos:
                 prog_nombre = a.programa.nombre_programa if a.programa else "Sin Programa"
-                notas_str = ",".join(str(n) for n in a.notas)
+                notas_str = ",".join(str(n) for n in a.notas[:MAX_NOTAS_POR_ALUMNO])
                 f.write(f"{a.cedula};{a.nombre};{a.correo};{prog_nombre};{notas_str}\n")
 
     def _guardar_profesores(self) -> None:
@@ -118,3 +127,42 @@ class GestorSGA:
             if a.cedula == cedula:
                 return a
         return None
+
+    def asignar_nota_alumno(self, cedula: str, nota: float) -> str:
+        alumno = self.buscar_alumno_por_cedula(cedula)
+        if not alumno:
+            raise LookupError("Alumno no encontrado.")
+        alumno.agregar_nota(nota)
+        self.pila_deshacer_notas.apilar((cedula, nota))
+        self.historial.apilar(f"Nota {nota} asignada a CI: {cedula}")
+        self.guardar_datos()
+        return f"Nota {nota} asignada correctamente a {alumno.nombre}."
+
+    def deshacer_ultima_nota(self) -> Optional[str]:
+        ultimo = self.pila_deshacer_notas.desapilar()
+        if not ultimo:
+            return None
+        cedula, nota = ultimo
+        alumno = self.buscar_alumno_por_cedula(cedula)
+        if alumno and alumno.notas:
+            for i in range(len(alumno.notas) - 1, -1, -1):
+                if abs(alumno.notas[i] - nota) < 1e-9:
+                    alumno.notas.pop(i)
+                    break
+        self.historial.apilar(f"Deshacer nota ({nota}) de CI: {cedula}")
+        self.guardar_datos()
+        nombre = alumno.nombre if alumno else f"CI {cedula}"
+        return f"Se deshizo la nota {nota} de {nombre}."
+
+    def exportar_certificados_txt(self, nombre_archivo: str = "certificados_pendientes.txt") -> str:
+        """Exporta todos los certificados encolados en orden FIFO a un archivo TXT."""
+        pendientes = self.cola_certificados.listar_elementos()
+        ruta_archivo = os.path.join(self.ruta_datos, nombre_archivo)
+        with open(ruta_archivo, "w", encoding="utf-8") as f:
+            if not pendientes:
+                f.write("No hay certificados pendientes en la cola.\n")
+            else:
+                for idx, cert in enumerate(pendientes, 1):
+                    f.write(f"{idx}. {cert}\n")
+        self.historial.apilar(f"Exportados {len(pendientes)} certificados a {ruta_archivo}")
+        return ruta_archivo

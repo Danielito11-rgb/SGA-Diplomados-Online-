@@ -192,9 +192,18 @@ public class Main {
 
     private static void generarColaCertificadosMenu(GestorSGA gestor) {
         System.out.println("\n--- Generar Cola de Certificados ---");
+        List<String> pendientes = gestor.getColaCertificados().listarElementos();
         Path rutaExportada = gestor.exportarColaCertificados();
         if (rutaExportada != null) {
-            System.out.println("Archivo generado en: " + rutaExportada.toAbsolutePath());
+            if (pendientes.isEmpty()) {
+                System.out.println("La cola estaba vacía. Se registró el estado en: " + rutaExportada.toAbsolutePath());
+            } else {
+                System.out.println("Certificados exportados en orden FIFO:");
+                for (int i = 0; i < pendientes.size(); i++) {
+                    System.out.println("  " + (i + 1) + ". " + pendientes.get(i));
+                }
+                System.out.println("Archivo generado en: " + rutaExportada.toAbsolutePath());
+            }
         } else {
             System.out.println("No se pudo generar certificados_pendientes.txt.");
         }

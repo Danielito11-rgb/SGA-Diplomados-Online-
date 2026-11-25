@@ -259,15 +259,19 @@ std::string GestorSGA::deshacerUltimaNota() {
 }
 
 fs::path GestorSGA::exportarColaCertificados() {
-    fs::path rutaArchivo = fs::path("certificados_pendientes.txt");
+    fs::path rutaArchivo = fs::path(rutaDatos_) / "certificados_pendientes.txt";
     std::ofstream archivo(rutaArchivo);
     if (!archivo.is_open()) {
         return {};
     }
 
     std::vector<std::string> elementos = colaCertificados_.listarElementos();
-    for (const std::string& item : elementos) {
-        archivo << item << "\n";
+    if (elementos.empty()) {
+        archivo << "No hay certificados pendientes en la cola.\n";
+    } else {
+        for (std::size_t i = 0; i < elementos.size(); ++i) {
+            archivo << (i + 1) << ". " << elementos[i] << "\n";
+        }
     }
 
     historial_.apilar("Cola de certificados exportada a certificados_pendientes.txt.");
